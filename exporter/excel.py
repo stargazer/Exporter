@@ -1,5 +1,6 @@
-import tablib
-import StringIO
+from tablib import Dataset
+from tablib.formats import xls
+from tablib.compat import BytesIO, xlwt
 
 def _clean(value):
     """
@@ -21,7 +22,7 @@ def _clean(value):
     try:
         return str(value)
     except UnicodeEncodeError:
-        return unicode(value)  
+        return unicode(value)
 
 def export(data, fields, sheet_title=''):
     """
@@ -42,14 +43,38 @@ def export(data, fields, sheet_title=''):
             [_clean(element.get(key)) for key in fields]
         )
 
-    # Capitalize the headers        
-    headers = [field.capitalize() for field in fields]        
+    headers = list(fields)
+
+    # Detect formatting based on header values:
+    #   **Bold**
+    format_columns = {}
+    for i, head in enumerate(headers):
+        if head.startswith('**') and head.endswith('**'):
+            format_columns[i] = 'B'
+            headers[i] = head[2:-2]
+
+    # Capitalize the headers
+    headers = [header.capitalize() for header in headers]
 
     # Create the tablib dataset
-    dataset = tablib.Dataset(*values, headers=headers, title=sheet_title)
+    dataset = Dataset(*values, headers=headers, title=sheet_title)
+
+    # Create worksheet from dataset
+    workbook = xlwt.Workbook(encoding='utf8')
+    worksheet = workbook.add_sheet(dataset.title, cell_overwrite_ok=True)
+    xls.dset_sheet(dataset, worksheet)  # actual conversion
+
+    # Overwrite columns with formatted cells
+    bold = xlwt.easyxf("font: bold on")  #TODO Change this into Font()
+    for row in range(dataset.height):
+        for col, style in format_columns.iteritems():
+            if 'B' in style:
+                # `row+1`, since we want to pass over the header row
+                worksheet.write(row+1, col, dataset[row][col], bold)
+
     # Export to excel
-    stream = StringIO.StringIO()
-    stream.write(dataset.xls)
+    stream = BytesIO()
+    workbook.save(stream)
     stream.seek(0)
 
-    return stream    
+    return stream
