@@ -37,7 +37,6 @@ case. Example: ``name`` becomes ``Name``.
 If you want to use formatting in your columns, you can make this known to the
 exporter know this by changing the column header names. So for a bold column
 ``name``, you name the column header ``**name**``. Then ``**name**`` is renamed
-to ``name`` and every value in that column (except the column header itself) is
-made bold.
+to ``name`` and every value in that column is made bold.
 
 Currently supported formats are: ``**bold**``
