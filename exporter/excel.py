@@ -1,6 +1,6 @@
 from tablib import Dataset
-from tablib.formats import xls
-from tablib.compat import BytesIO, xlwt
+from tablib.formats import xlsx
+from tablib.compat import BytesIO, openpyxl
 
 def _clean(value):
     """
@@ -51,9 +51,9 @@ def export(data, fields, sheet_title=''):
     columns_format = {}
     for i, head in enumerate(headers):
         if head.startswith('**') and head.endswith('**'):
-            style = xlwt.Style.XFStyle()
-            style.font.bold = True
-            columns_format[i] = style
+            font = openpyxl.style.Font()
+            font.bold = True
+            columns_format[i] = font
             headers[i] = head[2:-2]
 
     # In headers: replace underscores with spaces and capitalize them
@@ -63,15 +63,16 @@ def export(data, fields, sheet_title=''):
     dataset = Dataset(*values, headers=headers, title=sheet_title)
 
     # Create worksheet from dataset
-    workbook = xlwt.Workbook(encoding='utf8')
-    worksheet = workbook.add_sheet(dataset.title, cell_overwrite_ok=True)
-    xls.dset_sheet(dataset, worksheet)  # actual conversion
+    workbook = openpyxl.workbook.Workbook()
+    worksheet = workbook.get_active_sheet()
+    worksheet.title = dataset.title
+    xlsx.dset_sheet(dataset, worksheet)  # actual conversion
 
     # Overwrite columns with formatted cells
-    for col, style in columns_format.iteritems():
+    for col, font in columns_format.iteritems():
         for row in range(dataset.height):
             # ``row+1``: pass over the header row, which is present in worksheet
-            worksheet.write(row+1, col, dataset[row][col], style)
+            worksheet.cell(row=row+1, column=col)._set_value(dataset[row][col])
 
     # Export to excel
     stream = BytesIO()
